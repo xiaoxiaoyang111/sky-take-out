@@ -31,6 +31,8 @@ public class EmployeeServiceImpl implements EmployeeService {
     // 自己不能new mapper 因为会报错,其次如果service有嵌套关系自己new的话会相当复杂
     @Autowired
     private EmployeeMapper employeeMapper;
+    @Autowired
+    private EmployeeService employeeService;
 
     /**
      * 员工登录
@@ -115,6 +117,29 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .id(id)
                 .build();
         employeeMapper.update(employee);
+    }
+
+    /**
+     * 根据id查询员工
+     * @param id
+     * @return
+     */
+    @Override
+    public Employee getById(Long id) {
+        Employee employee = employeeMapper.getById(id);
+        employee.setPassword("****");
+        return employee;
+    }
+
+    @Override
+    public void update(EmployeeDTO employeeDTO) {
+        Employee employee = new Employee();
+        BeanUtils.copyProperties(employeeDTO,employee);
+
+        employee.setUpdateTime(LocalDateTime.now());
+        employee.setUpdateUser(BaseContext.getCurrentId());
+        employeeMapper.update(employee);
+
     }
 
 }
