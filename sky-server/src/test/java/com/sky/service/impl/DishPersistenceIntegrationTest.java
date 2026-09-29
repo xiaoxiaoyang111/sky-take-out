@@ -95,6 +95,48 @@ class DishPersistenceIntegrationTest {
         }
     }
 
+    @Test
+    void updateReplacesAndClearsFlavorsAndRollsBackOnFailedInsert() {
+        String originalName = "CodexUpdate_" + UUID.randomUUID().toString().substring(0, 8);
+        String updatedName = originalName + "_new";
+        BaseContext.setCurrentId(1L);
+        Long id = null;
+        try {
+            dishService.save(dish(originalName, "[\"Mild\"]"));
+            id = jdbcTemplate.queryForObject("select id from dish where name = ?", Long.class, originalName);
+
+            DishDTO update = dish(updatedName, "[\"Hot\"]");
+            update.setId(id);
+            update.getFlavors().get(0).setId(999999L);
+            update.getFlavors().get(0).setDishId(999999L);
+            dishService.update(update);
+
+            DishVO loaded = dishService.getById(id);
+            assertEquals(updatedName, loaded.getName());
+            assertEquals(1, loaded.getFlavors().size());
+            assertEquals(id, loaded.getFlavors().get(0).getDishId());
+            assertEquals("[\"Hot\"]", loaded.getFlavors().get(0).getValue());
+            assertEquals(1L, jdbcTemplate.queryForObject(
+                    "select update_user from dish where id = ?", Long.class, id));
+
+            DishDTO failing = dish(originalName, String.join("", Collections.nCopies(300, "x")));
+            failing.setId(id);
+            assertThrows(RuntimeException.class, () -> dishService.update(failing));
+            DishVO afterFailure = dishService.getById(id);
+            assertEquals(updatedName, afterFailure.getName());
+            assertEquals("[\"Hot\"]", afterFailure.getFlavors().get(0).getValue());
+
+            update.setFlavors(Collections.emptyList());
+            dishService.update(update);
+            assertTrue(dishService.getById(id).getFlavors().isEmpty());
+        } finally {
+            if (id != null) {
+                jdbcTemplate.update("delete from dish_flavor where dish_id = ?", id);
+                jdbcTemplate.update("delete from dish where id = ?", id);
+            }
+        }
+    }
+
     private DishDTO dish(String name, String flavorValue) {
         DishDTO dto = new DishDTO();
         dto.setName(name);

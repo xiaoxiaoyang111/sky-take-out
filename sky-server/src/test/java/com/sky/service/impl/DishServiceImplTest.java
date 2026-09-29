@@ -185,6 +185,67 @@ class DishServiceImplTest {
         verifyNoInteractions(dishMapper, dishFlavorMapper);
     }
 
+    @Test
+    void updateReplacesFlavorsUsingTrustedDishId() {
+        DishDTO dto = validDish();
+        dto.setId(67L);
+        DishFlavor flavor = DishFlavor.builder().id(55L).dishId(999L)
+                .name("辣度").value("[\"微辣\"]").build();
+        dto.setFlavors(Collections.singletonList(flavor));
+        when(dishMapper.getById(67L)).thenReturn(DishVO.builder().id(67L).build());
+        validCategory();
+
+        dishService.update(dto);
+
+        ArgumentCaptor<Dish> captor = ArgumentCaptor.forClass(Dish.class);
+        verify(dishMapper).update(captor.capture());
+        assertEquals(67L, captor.getValue().getId());
+        assertEquals(null, captor.getValue().getStatus());
+        verify(dishFlavorMapper).deleteByDishId(67L);
+        assertEquals(null, flavor.getId());
+        assertEquals(67L, flavor.getDishId());
+        verify(dishFlavorMapper).insertBatch(dto.getFlavors());
+    }
+
+    @Test
+    void updateWithNoFlavorsClearsOldFlavors() {
+        DishDTO dto = validDish();
+        dto.setId(67L);
+        when(dishMapper.getById(67L)).thenReturn(DishVO.builder().id(67L).build());
+        validCategory();
+
+        dishService.update(dto);
+
+        verify(dishFlavorMapper).deleteByDishId(67L);
+        verify(dishFlavorMapper, never()).insertBatch(org.mockito.ArgumentMatchers.anyList());
+    }
+
+    @Test
+    void updateRejectsMissingDishBeforeWrite() {
+        DishDTO dto = validDish();
+        dto.setId(999999L);
+
+        assertThrows(BaseException.class, () -> dishService.update(dto));
+
+        verify(dishMapper).getById(999999L);
+        verify(dishMapper, never()).update(org.mockito.ArgumentMatchers.any(Dish.class));
+        verifyNoInteractions(dishFlavorMapper);
+    }
+
+    @Test
+    void updateRejectsInvalidFlavorBeforeWrite() {
+        DishDTO dto = validDish();
+        dto.setId(67L);
+        dto.setFlavors(Collections.singletonList(DishFlavor.builder().name("").value("[]").build()));
+        when(dishMapper.getById(67L)).thenReturn(DishVO.builder().id(67L).build());
+        validCategory();
+
+        assertThrows(BaseException.class, () -> dishService.update(dto));
+
+        verify(dishMapper, never()).update(org.mockito.ArgumentMatchers.any(Dish.class));
+        verifyNoInteractions(dishFlavorMapper);
+    }
+
     private void validCategory() {
         Category category = new Category();
         category.setType(1);

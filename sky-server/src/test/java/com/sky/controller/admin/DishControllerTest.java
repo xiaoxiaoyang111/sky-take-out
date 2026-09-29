@@ -26,6 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import org.springframework.http.MediaType;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -128,5 +129,23 @@ class DishControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.msg").value("菜品不存在"));
+    }
+
+    @Test
+    void updateBindsDishIdAndReplacementFlavors() throws Exception {
+        mockMvc.perform(put("/admin/dish")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"id\":67,\"name\":\"鮰鱼2斤\",\"categoryId\":16," +
+                                "\"price\":72,\"image\":\"http://localhost/image.png\"," +
+                                "\"flavors\":[{\"id\":9,\"dishId\":999,\"name\":\"辣度\"," +
+                                "\"value\":\"[\\\"微辣\\\"]\"}]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1));
+
+        ArgumentCaptor<com.sky.dto.DishDTO> captor =
+                ArgumentCaptor.forClass(com.sky.dto.DishDTO.class);
+        verify(dishService).update(captor.capture());
+        assertEquals(67L, captor.getValue().getId());
+        assertEquals(1, captor.getValue().getFlavors().size());
     }
 }
