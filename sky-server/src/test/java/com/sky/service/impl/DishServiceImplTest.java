@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -142,6 +143,46 @@ class DishServiceImplTest {
         DishDTO dto = validDish();
         assertThrows(BaseException.class, () -> dishService.save(dto));
         verify(dishMapper, never()).insert(org.mockito.ArgumentMatchers.any(Dish.class));
+    }
+
+    @Test
+    void getByIdReturnsDishWithFlavors() {
+        DishVO dish = DishVO.builder().id(68L).name("鸡蛋汤").categoryName("汤类").build();
+        DishFlavor flavor = DishFlavor.builder().id(9L).dishId(68L).name("温度").value("[\"热\"]").build();
+        when(dishMapper.getById(68L)).thenReturn(dish);
+        when(dishFlavorMapper.getByDishId(68L)).thenReturn(Collections.singletonList(flavor));
+
+        DishVO result = dishService.getById(68L);
+
+        assertSame(dish, result);
+        assertEquals("汤类", result.getCategoryName());
+        assertEquals(Collections.singletonList(flavor), result.getFlavors());
+    }
+
+    @Test
+    void getByIdReturnsEmptyFlavorsWhenDishHasNone() {
+        DishVO dish = DishVO.builder().id(69L).name("平菇豆腐汤").build();
+        when(dishMapper.getById(69L)).thenReturn(dish);
+        when(dishFlavorMapper.getByDishId(69L)).thenReturn(Collections.emptyList());
+
+        DishVO result = dishService.getById(69L);
+
+        assertEquals(0, result.getFlavors().size());
+    }
+
+    @Test
+    void getByIdRejectsMissingDishWithoutLoadingFlavors() {
+        BaseException error = assertThrows(BaseException.class, () -> dishService.getById(999999L));
+
+        assertEquals("菜品不存在", error.getMessage());
+        verify(dishMapper).getById(999999L);
+        verifyNoInteractions(dishFlavorMapper);
+    }
+
+    @Test
+    void getByIdRejectsInvalidIdBeforeQuery() {
+        assertThrows(BaseException.class, () -> dishService.getById(0L));
+        verifyNoInteractions(dishMapper, dishFlavorMapper);
     }
 
     private void validCategory() {

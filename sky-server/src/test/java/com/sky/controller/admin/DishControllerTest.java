@@ -3,6 +3,10 @@ package com.sky.controller.admin;
 import com.sky.dto.DishPageQueryDTO;
 import com.sky.result.PageResult;
 import com.sky.service.DishService;
+import com.sky.vo.DishVO;
+import com.sky.entity.DishFlavor;
+import com.sky.exception.BaseException;
+import com.sky.handler.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +44,7 @@ class DishControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(dishController)
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(new Validator() {
                     @Override
                     public boolean supports(Class<?> clazz) {
@@ -95,5 +100,33 @@ class DishControllerTest {
         assertEquals("测试菜品", captor.getValue().getName());
         assertEquals(1, captor.getValue().getFlavors().size());
         assertEquals("辣度", captor.getValue().getFlavors().get(0).getName());
+    }
+
+    @Test
+    void getByIdReturnsDishAndFlavors() throws Exception {
+        DishVO dish = DishVO.builder().id(68L).name("鸡蛋汤")
+                .categoryName("汤类")
+                .flavors(Collections.singletonList(DishFlavor.builder()
+                        .id(1L).dishId(68L).name("温度").value("[\"热\"]").build()))
+                .build();
+        when(dishService.getById(68L)).thenReturn(dish);
+
+        mockMvc.perform(get("/admin/dish/68"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data.id").value(68))
+                .andExpect(jsonPath("$.data.categoryName").value("汤类"))
+                .andExpect(jsonPath("$.data.flavors[0].dishId").value(68));
+        verify(dishService).getById(68L);
+    }
+
+    @Test
+    void getByIdReturnsBusinessErrorWhenDishDoesNotExist() throws Exception {
+        when(dishService.getById(999999L)).thenThrow(new BaseException("菜品不存在"));
+
+        mockMvc.perform(get("/admin/dish/999999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.msg").value("菜品不存在"));
     }
 }

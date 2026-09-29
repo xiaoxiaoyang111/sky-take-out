@@ -15,6 +15,11 @@ public interface DishMapper {
     @AutoFill(OperationType.INSERT)
     void insert(Dish dish);
 
+    DishVO getById(Long id);
+
+    @AutoFill(OperationType.UPDATE)
+    void update(Dish dish);
+
     /**
      * 根据分类id查询菜品数量
      * @param categoryId

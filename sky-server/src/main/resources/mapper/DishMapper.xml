@@ -10,6 +10,22 @@
                 #{createTime}, #{updateTime}, #{createUser}, #{updateUser})
     </insert>
 
+    <select id="getById" resultType="com.sky.vo.DishVO">
+        select d.*, c.name as category_name
+        from dish d
+        left join category c on d.category_id = c.id
+        where d.id = #{id}
+    </select>
+
+    <update id="update" parameterType="com.sky.entity.Dish">
+        update dish
+        set name = #{name}, category_id = #{categoryId}, price = #{price},
+            image = #{image}, description = #{description},
+            <if test="status != null">status = #{status},</if>
+            update_time = #{updateTime}, update_user = #{updateUser}
+        where id = #{id}
+    </update>
+
     <select id="pageQuery" resultType="com.sky.vo.DishVO">
         select d.*, c.name as category_name
         from dish d

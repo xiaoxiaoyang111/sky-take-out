@@ -10,4 +10,15 @@
         </foreach>
     </insert>
 
+    <select id="getByDishId" resultType="com.sky.entity.DishFlavor">
+        select id, dish_id, name, value
+        from dish_flavor
+        where dish_id = #{dishId}
+        order by id
+    </select>
+
+    <delete id="deleteByDishId">
+        delete from dish_flavor where dish_id = #{dishId}
+    </delete>
+
 </mapper>

@@ -5,6 +5,7 @@ import com.github.pagehelper.PageHelper;
 import com.sky.dto.DishPageQueryDTO;
 import com.sky.dto.DishDTO;
 import com.sky.constant.StatusConstant;
+import com.sky.constant.MessageConstant;
 import com.sky.entity.Dish;
 import com.sky.entity.DishFlavor;
 import com.sky.entity.Category;
@@ -37,6 +38,27 @@ public class DishServiceImpl implements DishService {
     @Override
     @Transactional
     public void save(DishDTO dishDTO) {
+        validateDish(dishDTO);
+
+        Dish dish = new Dish();
+        BeanUtils.copyProperties(dishDTO, dish);
+        dish.setId(null);
+        if (dish.getStatus() == null) {
+            dish.setStatus(StatusConstant.ENABLE);
+        }
+        dishMapper.insert(dish);
+
+        List<DishFlavor> flavors = dishDTO.getFlavors();
+        if (flavors != null && !flavors.isEmpty()) {
+            for (DishFlavor flavor : flavors) {
+                flavor.setId(null);
+                flavor.setDishId(dish.getId());
+            }
+            dishFlavorMapper.insertBatch(flavors);
+        }
+    }
+
+    private void validateDish(DishDTO dishDTO) {
         if (dishDTO == null || dishDTO.getCategoryId() == null || dishDTO.getCategoryId() <= 0 ||
                 dishDTO.getName() == null || dishDTO.getName().trim().isEmpty() ||
                 dishDTO.getImage() == null || dishDTO.getImage().trim().isEmpty() ||
@@ -51,9 +73,8 @@ public class DishServiceImpl implements DishService {
                 !StatusConstant.ENABLE.equals(category.getStatus())) {
             throw new BaseException("请选择有效的菜品分类");
         }
-        List<DishFlavor> flavors = dishDTO.getFlavors();
-        if (flavors != null) {
-            for (DishFlavor flavor : flavors) {
+        if (dishDTO.getFlavors() != null) {
+            for (DishFlavor flavor : dishDTO.getFlavors()) {
                 if (flavor == null || flavor.getName() == null || flavor.getName().trim().isEmpty() ||
                         flavor.getValue() == null || flavor.getValue().trim().isEmpty()) {
                     throw new BaseException("菜品口味名称和值不能为空");
@@ -61,14 +82,36 @@ public class DishServiceImpl implements DishService {
             }
         }
 
+    }
+
+    @Override
+    public DishVO getById(Long id) {
+        if (id == null || id <= 0) {
+            throw new BaseException(MessageConstant.DISH_NOT_FOUND);
+        }
+        DishVO dish = dishMapper.getById(id);
+        if (dish == null) {
+            throw new BaseException(MessageConstant.DISH_NOT_FOUND);
+        }
+        dish.setFlavors(dishFlavorMapper.getByDishId(id));
+        return dish;
+    }
+
+    @Override
+    @Transactional
+    public void update(DishDTO dishDTO) {
+        if (dishDTO == null || dishDTO.getId() == null || dishDTO.getId() <= 0 ||
+                dishMapper.getById(dishDTO.getId()) == null) {
+            throw new BaseException(MessageConstant.DISH_NOT_FOUND);
+        }
+        validateDish(dishDTO);
+
         Dish dish = new Dish();
         BeanUtils.copyProperties(dishDTO, dish);
-        dish.setId(null);
-        if (dish.getStatus() == null) {
-            dish.setStatus(StatusConstant.ENABLE);
-        }
-        dishMapper.insert(dish);
+        dishMapper.update(dish);
 
+        dishFlavorMapper.deleteByDishId(dish.getId());
+        List<DishFlavor> flavors = dishDTO.getFlavors();
         if (flavors != null && !flavors.isEmpty()) {
             for (DishFlavor flavor : flavors) {
                 flavor.setId(null);

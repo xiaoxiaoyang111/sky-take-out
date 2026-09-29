@@ -4,6 +4,7 @@ import com.sky.context.BaseContext;
 import com.sky.dto.DishDTO;
 import com.sky.entity.DishFlavor;
 import com.sky.service.DishService;
+import com.sky.vo.DishVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -54,6 +55,15 @@ class DishPersistenceIntegrationTest {
             assertEquals(1, flavorCount);
             assertEquals(1L, createUser);
 
+            Long dishId = jdbcTemplate.queryForObject(
+                    "select id from dish where name = ?", Long.class, goodName);
+            DishVO loaded = dishService.getById(dishId);
+            assertEquals(goodName, loaded.getName());
+            assertEquals("酒水饮料", loaded.getCategoryName());
+            assertEquals(1, loaded.getFlavors().size());
+            assertEquals(dishId, loaded.getFlavors().get(0).getDishId());
+            assertEquals("[\"Mild\",\"Hot\"]", loaded.getFlavors().get(0).getValue());
+
             DishDTO bad = dish(badName, String.join("", Collections.nCopies(300, "x")));
             assertThrows(RuntimeException.class, () -> dishService.save(bad));
             Integer rolledBackCount = jdbcTemplate.queryForObject(
@@ -63,6 +73,25 @@ class DishPersistenceIntegrationTest {
             jdbcTemplate.update("delete from dish_flavor where dish_id in (select id from dish where name in (?, ?))",
                     goodName, badName);
             jdbcTemplate.update("delete from dish where name in (?, ?)", goodName, badName);
+        }
+    }
+
+    @Test
+    void getByIdReturnsEmptyFlavorListAndRejectsMissingId() {
+        String name = "CodexNoFlavor_" + UUID.randomUUID().toString().substring(0, 8);
+        BaseContext.setCurrentId(1L);
+        try {
+            DishDTO dto = dish(name, "unused");
+            dto.setFlavors(Collections.emptyList());
+            dishService.save(dto);
+            Long id = jdbcTemplate.queryForObject("select id from dish where name = ?", Long.class, name);
+
+            DishVO loaded = dishService.getById(id);
+            assertEquals(name, loaded.getName());
+            assertTrue(loaded.getFlavors().isEmpty());
+            assertThrows(RuntimeException.class, () -> dishService.getById(Long.MAX_VALUE));
+        } finally {
+            jdbcTemplate.update("delete from dish where name = ?", name);
         }
     }
 
