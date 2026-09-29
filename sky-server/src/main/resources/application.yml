@@ -2,6 +2,10 @@ server:
   port: 8080
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
   profiles:
     active: dev
   main:
@@ -30,6 +34,9 @@ logging:
         controller: info
 
 sky:
+  upload:
+    path: ${SKY_UPLOAD_PATH:${user.home}/sky-take-out/uploads}
+    base-url: ${SKY_UPLOAD_BASE_URL:http://localhost:8080/images}
   jwt:
     # 设置jwt签名加密时使用的秘钥
     admin-secret-key: itcast

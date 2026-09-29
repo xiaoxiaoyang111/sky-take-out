@@ -3,18 +3,80 @@ package com.sky.service.impl;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.sky.dto.DishPageQueryDTO;
+import com.sky.dto.DishDTO;
+import com.sky.constant.StatusConstant;
+import com.sky.entity.Dish;
+import com.sky.entity.DishFlavor;
+import com.sky.entity.Category;
+import com.sky.exception.BaseException;
+import com.sky.mapper.DishFlavorMapper;
+import com.sky.mapper.CategoryMapper;
 import com.sky.mapper.DishMapper;
 import com.sky.result.PageResult;
 import com.sky.service.DishService;
 import com.sky.vo.DishVO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class DishServiceImpl implements DishService {
 
     @Autowired
     private DishMapper dishMapper;
+
+    @Autowired
+    private DishFlavorMapper dishFlavorMapper;
+
+    @Autowired
+    private CategoryMapper categoryMapper;
+
+    @Override
+    @Transactional
+    public void save(DishDTO dishDTO) {
+        if (dishDTO == null || dishDTO.getCategoryId() == null || dishDTO.getCategoryId() <= 0 ||
+                dishDTO.getName() == null || dishDTO.getName().trim().isEmpty() ||
+                dishDTO.getImage() == null || dishDTO.getImage().trim().isEmpty() ||
+                dishDTO.getPrice() == null || dishDTO.getPrice().signum() < 0) {
+            throw new BaseException("菜品名称、分类、价格和图片不能为空，价格不能为负数");
+        }
+        if (dishDTO.getStatus() != null && dishDTO.getStatus() != 0 && dishDTO.getStatus() != 1) {
+            throw new BaseException("菜品状态不正确");
+        }
+        Category category = categoryMapper.getById(dishDTO.getCategoryId());
+        if (category == null || !Integer.valueOf(1).equals(category.getType()) ||
+                !StatusConstant.ENABLE.equals(category.getStatus())) {
+            throw new BaseException("请选择有效的菜品分类");
+        }
+        List<DishFlavor> flavors = dishDTO.getFlavors();
+        if (flavors != null) {
+            for (DishFlavor flavor : flavors) {
+                if (flavor == null || flavor.getName() == null || flavor.getName().trim().isEmpty() ||
+                        flavor.getValue() == null || flavor.getValue().trim().isEmpty()) {
+                    throw new BaseException("菜品口味名称和值不能为空");
+                }
+            }
+        }
+
+        Dish dish = new Dish();
+        BeanUtils.copyProperties(dishDTO, dish);
+        dish.setId(null);
+        if (dish.getStatus() == null) {
+            dish.setStatus(StatusConstant.ENABLE);
+        }
+        dishMapper.insert(dish);
+
+        if (flavors != null && !flavors.isEmpty()) {
+            for (DishFlavor flavor : flavors) {
+                flavor.setId(null);
+                flavor.setDishId(dish.getId());
+            }
+            dishFlavorMapper.insertBatch(flavors);
+        }
+    }
 
     /**
      * 菜品分页查询

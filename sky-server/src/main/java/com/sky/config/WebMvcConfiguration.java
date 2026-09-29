@@ -4,6 +4,7 @@ import com.sky.interceptor.JwtTokenAdminInterceptor;
 import com.sky.json.JacksonObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -19,6 +20,7 @@ import springfox.documentation.spi.DocumentationType;
 import springfox.documentation.spring.web.plugins.Docket;
 
 import java.util.List;
+import java.nio.file.Paths;
 
 /**
  * 配置类，注册web层相关组件
@@ -29,6 +31,9 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
 
     @Autowired
     private JwtTokenAdminInterceptor jwtTokenAdminInterceptor;
+
+    @Value("${sky.upload.path}")
+    private String uploadPath;
 
     /**
      * 注册自定义拦截器
@@ -67,6 +72,11 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
      * @param registry
      */
     protected void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String location = Paths.get(uploadPath).toAbsolutePath().normalize().toUri().toString();
+        if (!location.endsWith("/")) {
+            location += "/";
+        }
+        registry.addResourceHandler("/images/**").addResourceLocations(location);
         registry.addResourceHandler("/doc.html").addResourceLocations("classpath:/META-INF/resources/");
         registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
     }

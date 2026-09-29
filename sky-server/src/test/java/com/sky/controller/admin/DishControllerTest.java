@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import org.springframework.http.MediaType;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -76,5 +78,22 @@ class DishControllerTest {
         assertEquals("鸡", query.getName());
         assertEquals(11, query.getCategoryId());
         assertEquals(1, query.getStatus());
+    }
+
+    @Test
+    void saveBindsDishAndFlavors() throws Exception {
+        mockMvc.perform(post("/admin/dish")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"测试菜品\",\"categoryId\":11,\"price\":12.5," +
+                                "\"image\":\"http://localhost/image.png\",\"flavors\":[{\"name\":\"辣度\",\"value\":\"[\\\"微辣\\\"]\"}]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1));
+
+        org.mockito.ArgumentCaptor<com.sky.dto.DishDTO> captor =
+                org.mockito.ArgumentCaptor.forClass(com.sky.dto.DishDTO.class);
+        verify(dishService).save(captor.capture());
+        assertEquals("测试菜品", captor.getValue().getName());
+        assertEquals(1, captor.getValue().getFlavors().size());
+        assertEquals("辣度", captor.getValue().getFlavors().get(0).getName());
     }
 }
