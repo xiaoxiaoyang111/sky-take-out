@@ -137,6 +137,37 @@ class DishPersistenceIntegrationTest {
         }
     }
 
+    @Test
+    void statusControlsCategoryListAndBatchDeleteRemovesFlavors() {
+        String name = "CodexLifecycle_" + UUID.randomUUID().toString().substring(0, 8);
+        BaseContext.setCurrentId(1L);
+        Long id = null;
+        try {
+            dishService.save(dish(name, "[\"Hot\"]"));
+            id = jdbcTemplate.queryForObject("select id from dish where name = ?", Long.class, name);
+            Long dishId = id;
+
+            assertTrue(dishService.listByCategoryId(11L).stream().anyMatch(item -> dishId.equals(item.getId())));
+            assertEquals("起售中的菜品不能删除", assertThrows(RuntimeException.class,
+                    () -> dishService.deleteBatch(Collections.singletonList(dishId))).getMessage());
+
+            dishService.startOrStop(0, id);
+            assertTrue(dishService.listByCategoryId(11L).stream().noneMatch(item -> dishId.equals(item.getId())));
+            assertEquals(name, dishService.getById(id).getName());
+            assertEquals(0, dishService.getById(id).getStatus());
+            assertEquals(1L, jdbcTemplate.queryForObject("select update_user from dish where id = ?", Long.class, id));
+
+            dishService.deleteBatch(Collections.singletonList(id));
+            assertEquals(0, jdbcTemplate.queryForObject("select count(*) from dish where id = ?", Integer.class, id));
+            assertEquals(0, jdbcTemplate.queryForObject("select count(*) from dish_flavor where dish_id = ?", Integer.class, id));
+        } finally {
+            if (id != null) {
+                jdbcTemplate.update("delete from dish_flavor where dish_id = ?", id);
+                jdbcTemplate.update("delete from dish where id = ?", id);
+            }
+        }
+    }
+
     private DishDTO dish(String name, String flavorValue) {
         DishDTO dto = new DishDTO();
         dto.setName(name);

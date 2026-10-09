@@ -13,6 +13,7 @@ import com.sky.exception.BaseException;
 import com.sky.mapper.DishFlavorMapper;
 import com.sky.mapper.CategoryMapper;
 import com.sky.mapper.DishMapper;
+import com.sky.mapper.SetmealMapper;
 import com.sky.result.PageResult;
 import com.sky.service.DishService;
 import com.sky.vo.DishVO;
@@ -21,6 +22,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 @Service
@@ -34,6 +37,9 @@ public class DishServiceImpl implements DishService {
 
     @Autowired
     private CategoryMapper categoryMapper;
+
+    @Autowired
+    private SetmealMapper setmealMapper;
 
     @Override
     @Transactional
@@ -119,6 +125,50 @@ public class DishServiceImpl implements DishService {
             }
             dishFlavorMapper.insertBatch(flavors);
         }
+    }
+
+    @Override
+    @Transactional
+    public void deleteBatch(List<Long> ids) {
+        if (ids == null || ids.isEmpty() || ids.contains(null) || ids.stream().anyMatch(id -> id <= 0)) {
+            throw new BaseException("请选择要删除的菜品");
+        }
+        List<Long> uniqueIds = new ArrayList<>(new LinkedHashSet<>(ids));
+        for (Long id : uniqueIds) {
+            DishVO dish = dishMapper.getById(id);
+            if (dish == null) {
+                throw new BaseException(MessageConstant.DISH_NOT_FOUND);
+            }
+            if (StatusConstant.ENABLE.equals(dish.getStatus())) {
+                throw new BaseException(MessageConstant.DISH_ON_SALE);
+            }
+            if (setmealMapper.countByDishId(id) > 0) {
+                throw new BaseException(MessageConstant.DISH_BE_RELATED_BY_SETMEAL);
+            }
+        }
+        for (Long id : uniqueIds) {
+            dishFlavorMapper.deleteByDishId(id);
+            dishMapper.deleteById(id);
+        }
+    }
+
+    @Override
+    public List<DishVO> listByCategoryId(Long categoryId) {
+        if (categoryId == null || categoryId <= 0) {
+            throw new BaseException("菜品分类不正确");
+        }
+        return dishMapper.listByCategoryId(categoryId);
+    }
+
+    @Override
+    public void startOrStop(Integer status, Long id) {
+        if (status == null || (status != 0 && status != 1)) {
+            throw new BaseException("菜品状态不正确");
+        }
+        if (id == null || id <= 0 || dishMapper.getById(id) == null) {
+            throw new BaseException(MessageConstant.DISH_NOT_FOUND);
+        }
+        dishMapper.updateStatus(Dish.builder().id(id).status(status).build());
     }
 
     /**

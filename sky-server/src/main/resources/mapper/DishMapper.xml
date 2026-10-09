@@ -26,6 +26,12 @@
         where id = #{id}
     </update>
 
+    <update id="updateStatus" parameterType="com.sky.entity.Dish">
+        update dish
+        set status = #{status}, update_time = #{updateTime}, update_user = #{updateUser}
+        where id = #{id}
+    </update>
+
     <select id="pageQuery" resultType="com.sky.vo.DishVO">
         select d.*, c.name as category_name
         from dish d
@@ -42,6 +48,13 @@
             </if>
         </where>
         order by d.create_time desc
+    </select>
+
+    <select id="listByCategoryId" resultType="com.sky.vo.DishVO">
+        select id, name, category_id, price, image, description, status, update_time
+        from dish
+        where category_id = #{categoryId} and status = 1
+        order by id
     </select>
 
 </mapper>

@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import org.springframework.http.MediaType;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -147,5 +148,30 @@ class DishControllerTest {
         verify(dishService).update(captor.capture());
         assertEquals(67L, captor.getValue().getId());
         assertEquals(1, captor.getValue().getFlavors().size());
+    }
+
+    @Test
+    void deleteBindsCommaSeparatedIds() throws Exception {
+        mockMvc.perform(delete("/admin/dish").param("ids", "12,13"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1));
+        verify(dishService).deleteBatch(java.util.Arrays.asList(12L, 13L));
+    }
+
+    @Test
+    void listBindsCategoryId() throws Exception {
+        when(dishService.listByCategoryId(11L)).thenReturn(Collections.emptyList());
+        mockMvc.perform(get("/admin/dish/list").param("categoryId", "11"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+        verify(dishService).listByCategoryId(11L);
+    }
+
+    @Test
+    void statusBindsStatusAndDishId() throws Exception {
+        mockMvc.perform(post("/admin/dish/status/0").param("id", "12"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1));
+        verify(dishService).startOrStop(0, 12L);
     }
 }

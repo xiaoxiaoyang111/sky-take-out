@@ -11,6 +11,7 @@ import com.sky.exception.BaseException;
 import com.sky.mapper.DishFlavorMapper;
 import com.sky.mapper.CategoryMapper;
 import com.sky.mapper.DishMapper;
+import com.sky.mapper.SetmealMapper;
 import com.sky.result.PageResult;
 import com.sky.vo.DishVO;
 import org.junit.jupiter.api.AfterEach;
@@ -22,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.util.Collections;
+import java.util.Arrays;
 import org.mockito.ArgumentCaptor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -44,6 +46,9 @@ class DishServiceImplTest {
 
     @Mock
     private CategoryMapper categoryMapper;
+
+    @Mock
+    private SetmealMapper setmealMapper;
 
     @InjectMocks
     private DishServiceImpl dishService;
@@ -244,6 +249,62 @@ class DishServiceImplTest {
 
         verify(dishMapper, never()).update(org.mockito.ArgumentMatchers.any(Dish.class));
         verifyNoInteractions(dishFlavorMapper);
+    }
+
+    @Test
+    void deleteBatchRemovesStoppedDishesAndFlavorsOnce() {
+        when(dishMapper.getById(12L)).thenReturn(DishVO.builder().id(12L).status(0).build());
+        when(dishMapper.getById(13L)).thenReturn(DishVO.builder().id(13L).status(0).build());
+
+        dishService.deleteBatch(Arrays.asList(12L, 12L, 13L));
+
+        verify(dishFlavorMapper).deleteByDishId(12L);
+        verify(dishFlavorMapper).deleteByDishId(13L);
+        verify(dishMapper).deleteById(12L);
+        verify(dishMapper).deleteById(13L);
+    }
+
+    @Test
+    void deleteBatchRejectsOnSaleOrSetmealDishBeforeAnyDelete() {
+        when(dishMapper.getById(12L)).thenReturn(DishVO.builder().id(12L).status(0).build());
+        when(dishMapper.getById(13L)).thenReturn(DishVO.builder().id(13L).status(1).build());
+        assertEquals("起售中的菜品不能删除", assertThrows(BaseException.class,
+                () -> dishService.deleteBatch(Arrays.asList(12L, 13L))).getMessage());
+        verify(dishMapper, never()).deleteById(org.mockito.ArgumentMatchers.anyLong());
+        verifyNoInteractions(dishFlavorMapper);
+
+        when(dishMapper.getById(14L)).thenReturn(DishVO.builder().id(14L).status(0).build());
+        when(setmealMapper.countByDishId(14L)).thenReturn(1);
+        assertEquals("当前菜品关联了套餐,不能删除", assertThrows(BaseException.class,
+                () -> dishService.deleteBatch(Collections.singletonList(14L))).getMessage());
+        verify(dishMapper, never()).deleteById(org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void deleteBatchRejectsMissingOrEmptyIds() {
+        assertThrows(BaseException.class, () -> dishService.deleteBatch(Collections.emptyList()));
+        assertThrows(BaseException.class, () -> dishService.deleteBatch(Collections.singletonList(0L)));
+        assertThrows(BaseException.class, () -> dishService.deleteBatch(Collections.singletonList(999L)));
+        verify(dishMapper, never()).deleteById(org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void statusChangesOnlyStatusAndAuditFields() {
+        when(dishMapper.getById(12L)).thenReturn(DishVO.builder().id(12L).status(1).build());
+        dishService.startOrStop(0, 12L);
+        ArgumentCaptor<Dish> captor = ArgumentCaptor.forClass(Dish.class);
+        verify(dishMapper).updateStatus(captor.capture());
+        assertEquals(12L, captor.getValue().getId());
+        assertEquals(0, captor.getValue().getStatus());
+        assertEquals(null, captor.getValue().getName());
+    }
+
+    @Test
+    void statusAndCategoryListRejectInvalidInput() {
+        assertThrows(BaseException.class, () -> dishService.startOrStop(2, 12L));
+        assertThrows(BaseException.class, () -> dishService.startOrStop(1, 999L));
+        assertThrows(BaseException.class, () -> dishService.listByCategoryId(0L));
+        verify(dishMapper, never()).updateStatus(org.mockito.ArgumentMatchers.any(Dish.class));
     }
 
     private void validCategory() {

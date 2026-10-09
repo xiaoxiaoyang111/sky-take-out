@@ -4,6 +4,7 @@ import com.sky.dto.DishPageQueryDTO;
 import com.sky.dto.DishDTO;
 import com.sky.result.PageResult;
 import com.sky.vo.DishVO;
+import java.util.List;
 
 public interface DishService {
     void save(DishDTO dishDTO);
@@ -11,6 +12,12 @@ public interface DishService {
     DishVO getById(Long id);
 
     void update(DishDTO dishDTO);
+
+    void deleteBatch(List<Long> ids);
+
+    List<DishVO> listByCategoryId(Long categoryId);
+
+    void startOrStop(Integer status, Long id);
 
     /**
      * 菜品分页查询
