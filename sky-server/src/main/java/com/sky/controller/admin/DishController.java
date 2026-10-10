@@ -76,9 +76,10 @@ public class DishController {
     }
 
     @GetMapping("/list")
-    @ApiOperation("根据分类id查询可售菜品")
-    public Result<List<DishVO>> list(@RequestParam Long categoryId) {
-        return Result.success(dishService.listByCategoryId(categoryId));
+    @ApiOperation("根据分类和名称查询可售菜品")
+    public Result<List<DishVO>> list(@RequestParam(required = false) Long categoryId,
+                                     @RequestParam(required = false) String name) {
+        return Result.success(dishService.list(categoryId, name));
     }
 
     @PostMapping("/status/{status}")

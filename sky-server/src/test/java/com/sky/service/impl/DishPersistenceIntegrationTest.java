@@ -168,6 +168,34 @@ class DishPersistenceIntegrationTest {
         }
     }
 
+    @Test
+    void listSupportsNameOnlyAndCombinedFiltersWhileExcludingStoppedDishes() {
+        String token = UUID.randomUUID().toString().substring(0, 8);
+        String matchingName = "CodexSearch_" + token;
+        String stoppedName = matchingName + "_stop";
+        String unrelatedName = "CodexOther_" + token;
+        BaseContext.setCurrentId(1L);
+        try {
+            for (String name : java.util.Arrays.asList(matchingName, stoppedName, unrelatedName)) {
+                DishDTO dto = dish(name, "unused");
+                dto.setFlavors(Collections.emptyList());
+                dto.setStatus(name.equals(stoppedName) ? 0 : 1);
+                dishService.save(dto);
+            }
+
+            java.util.List<DishVO> nameOnly = dishService.list(null, matchingName);
+            assertEquals(1, nameOnly.size());
+            assertEquals(matchingName, nameOnly.get(0).getName());
+            assertEquals(1, nameOnly.get(0).getStatus());
+            assertEquals(1, dishService.list(11L, matchingName).size());
+            assertTrue(dishService.list(Long.MAX_VALUE, matchingName).isEmpty());
+            assertTrue(dishService.list(11L, "NoMatch_" + token).isEmpty());
+        } finally {
+            jdbcTemplate.update("delete from dish where name in (?, ?, ?)",
+                    matchingName, stoppedName, unrelatedName);
+        }
+    }
+
     private DishDTO dish(String name, String flavorValue) {
         DishDTO dto = new DishDTO();
         dto.setName(name);

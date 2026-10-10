@@ -160,11 +160,34 @@ class DishControllerTest {
 
     @Test
     void listBindsCategoryId() throws Exception {
-        when(dishService.listByCategoryId(11L)).thenReturn(Collections.emptyList());
+        when(dishService.list(11L, null)).thenReturn(Collections.emptyList());
         mockMvc.perform(get("/admin/dish/list").param("categoryId", "11"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").isArray());
-        verify(dishService).listByCategoryId(11L);
+        verify(dishService).list(11L, null);
+    }
+
+    @Test
+    void listAcceptsNameWithoutCategoryId() throws Exception {
+        when(dishService.list(null, "鸡")).thenReturn(Collections.singletonList(
+                DishVO.builder().id(68L).name("鸡蛋汤").status(1).build()));
+
+        mockMvc.perform(get("/admin/dish/list").param("name", "鸡"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data[0].name").value("鸡蛋汤"));
+        verify(dishService).list(null, "鸡");
+    }
+
+    @Test
+    void listBindsCategoryAndNameTogether() throws Exception {
+        when(dishService.list(11L, "鸡")).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/admin/dish/list").param("categoryId", "11").param("name", "鸡"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.data").isArray());
+        verify(dishService).list(11L, "鸡");
     }
 
     @Test

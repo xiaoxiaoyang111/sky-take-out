@@ -57,4 +57,17 @@
         order by id
     </select>
 
+    <select id="list" resultType="com.sky.vo.DishVO">
+        select id, name, category_id, price, image, description, status, update_time
+        from dish
+        where status = 1
+        <if test="categoryId != null">
+            and category_id = #{categoryId}
+        </if>
+        <if test="name != null and name != ''">
+            and name like concat('%', #{name}, '%')
+        </if>
+        order by id
+    </select>
+
 </mapper>

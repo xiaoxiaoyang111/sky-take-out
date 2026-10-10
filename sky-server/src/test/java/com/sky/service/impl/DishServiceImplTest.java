@@ -307,6 +307,24 @@ class DishServiceImplTest {
         verify(dishMapper, never()).updateStatus(org.mockito.ArgumentMatchers.any(Dish.class));
     }
 
+    @Test
+    void listAllowsOptionalCategoryAndPassesCombinedFilters() {
+        java.util.List<DishVO> matches = Collections.singletonList(
+                DishVO.builder().id(68L).name("鸡蛋汤").status(1).build());
+        when(dishMapper.list(null, "鸡")).thenReturn(matches);
+        when(dishMapper.list(11L, "鸡")).thenReturn(matches);
+
+        assertSame(matches, dishService.list(null, "鸡"));
+        assertSame(matches, dishService.list(11L, "鸡"));
+    }
+
+    @Test
+    void listRejectsNonPositiveCategoryBeforeQuery() {
+        assertThrows(BaseException.class, () -> dishService.list(0L, "鸡"));
+        assertThrows(BaseException.class, () -> dishService.list(-1L, null));
+        verifyNoInteractions(dishMapper);
+    }
+
     private void validCategory() {
         Category category = new Category();
         category.setType(1);

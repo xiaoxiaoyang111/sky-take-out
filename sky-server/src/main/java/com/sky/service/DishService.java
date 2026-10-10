@@ -17,6 +17,8 @@ public interface DishService {
 
     List<DishVO> listByCategoryId(Long categoryId);
 
+    List<DishVO> list(Long categoryId, String name);
+
     void startOrStop(Integer status, Long id);
 
     /**

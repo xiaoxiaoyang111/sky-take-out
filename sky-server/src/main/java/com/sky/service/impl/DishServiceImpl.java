@@ -161,6 +161,14 @@ public class DishServiceImpl implements DishService {
     }
 
     @Override
+    public List<DishVO> list(Long categoryId, String name) {
+        if (categoryId != null && categoryId <= 0) {
+            throw new BaseException("菜品分类不正确");
+        }
+        return dishMapper.list(categoryId, name);
+    }
+
+    @Override
     public void startOrStop(Integer status, Long id) {
         if (status == null || (status != 0 && status != 1)) {
             throw new BaseException("菜品状态不正确");
