@@ -2,6 +2,13 @@ server:
   port: 8080
 
 spring:
+  redis:
+    host: ${SKY_REDIS_HOST:localhost}
+    port: ${SKY_REDIS_PORT:6379}
+    password: ${SKY_REDIS_PASSWORD:}
+    database: ${SKY_REDIS_DATABASE:0}
+    connect-timeout: 2s
+    timeout: 2s
   servlet:
     multipart:
       max-file-size: 2MB
