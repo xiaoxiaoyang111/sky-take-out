@@ -4,6 +4,8 @@
 
 ## 项目概况
 
+- 当前新增方向：光屿器材租赁网页版。继续开发前先阅读 `docs/rental/DEVELOPMENT.md` 和 `docs/rental/API.md`，按实际验证更新进度。旧外卖接口和数据保留，租赁使用独立 `rental_` 表。新前端源码在 `frontend/rental-web/`，不再修改旧压缩 bundle 来实现租赁功能。
+
 - 项目：苍穹外卖后端，Spring Boot 2.7.3、Maven 多模块、MyBatis、MySQL、Redis。
 - `sky-common`：通用常量、异常、工具、配置属性和统一返回对象。
 - `sky-pojo`：entity、DTO、VO。
