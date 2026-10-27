@@ -1,0 +1,5 @@
+<script setup>
+import {money} from '../api'
+defineProps({item:Object,dates:Object})
+</script>
+<template><RouterLink :to="{path:'/equipment/'+item.id,query:dates||{}}" class="equipment-card"><div class="product-image"><img :src="item.image||'/illustrations/camera.svg'" :alt="item.name" loading="lazy" @error="$event.target.src='/illustrations/camera.svg'"><span v-if="!item.image||item.image.startsWith('/illustrations/')" class="illustration-label">器材示意</span></div><div class="product-info"><small>{{item.brand}} / {{item.categoryName}}</small><h3>{{item.name}}</h3><p>{{item.description||'具体配置请在领取时与门店核对。'}}</p><div class="product-price"><span><b>¥{{money(item.dailyRate)}}</b><small> / 天</small></span><span class="deposit">押金 ¥{{money(item.deposit)}}</span></div><div class="product-availability"><span :class="{'stock-empty':item.availableCount===0}">{{!dates?'选择租期查看库存':item.availabilityError?'库存查询暂不可用':item.availableCount===0?'所选租期暂无库存':'所选租期可租 '+item.availableCount+' 件'}}</span><span>查看详情 →</span></div></div></RouterLink></template>

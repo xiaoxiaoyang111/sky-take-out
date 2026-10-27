@@ -1,0 +1,9 @@
+<script setup>
+import {ref,onMounted} from 'vue'
+import {Camera,Package,Clock,CheckCircle2,ArrowUpRight,Wallet} from 'lucide-vue-next'
+import {api,money} from '../api'
+const data=ref(null),error=ref(''),loading=ref(true)
+async function load(){loading.value=true;error.value='';try{data.value=await api('/admin/dashboard',{role:'ADMIN'})}catch(e){error.value=e.message}finally{loading.value=false}}
+onMounted(load)
+</script>
+<template><section class="wrap admin-page"><div class="page-heading"><div><span class="eyebrow">THE BIG PICTURE</span><h1>门店概览</h1><p class="muted">器材就绪，下一次创作即将发生。</p></div><button class="button secondary small" @click="load" :disabled="loading">刷新数据</button></div><div v-if="error" class="alert error">{{error}}</div><div v-if="loading" class="state">正在读取门店数据…</div><template v-else-if="data"><div class="stats-grid"><article class="stat-card"><Camera/><span>器材型号</span><strong>{{data.equipmentCount}}</strong></article><article class="stat-card"><Package/><span>实物资产</span><strong>{{data.assetCount}}</strong></article><article class="stat-card highlight"><Clock/><span>待确认预约</span><strong>{{data.pendingCount}}</strong></article><article class="stat-card"><CheckCircle2/><span>正在租用</span><strong>{{data.rentedCount}}</strong></article></div><div class="dashboard-grid"><article class="revenue-card"><Wallet :size="27"/><span class="eyebrow">COMPLETED RENTALS</span><h2>已完成订单租金合计</h2><strong>¥{{money(data.rentalRevenue)}}</strong><p>共 {{data.completedCount}} 笔已归还订单。此金额为订单租金记录，不包含押金，也不代表线上实收。</p></article><article class="panel quick-links"><span class="eyebrow">KEEP THINGS MOVING</span><h2>今天，从这里开始</h2><RouterLink to="/admin/orders"><span><b>处理租赁订单</b><small>审核预约、办理领取与归还</small></span><ArrowUpRight/></RouterLink><RouterLink to="/admin/equipment"><span><b>管理器材资产</b><small>维护型号、登记实物与维修状态</small></span><ArrowUpRight/></RouterLink></article></div></template></section></template>
