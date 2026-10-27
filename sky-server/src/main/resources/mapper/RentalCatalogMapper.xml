@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sky.rental.mapper.RentalCatalogMapper">
+    <sql id="equipmentColumns">e.*, c.name category_name, (select count(*) from rental_asset a where a.equipment_id=e.id and a.status!='RETIRED') asset_count</sql>
+    <select id="equipmentList" resultType="com.sky.rental.model.RentalEquipment">
+        select <include refid="equipmentColumns"/> from rental_equipment e join rental_category c on c.id=e.category_id
+        <where>
+            <if test="!admin">e.status=1 and c.status=1</if>
+            <if test="categoryId != null">and e.category_id=#{categoryId}</if>
+            <if test="keyword != null and keyword != ''">and (e.name like concat('%',#{keyword},'%') or e.brand like concat('%',#{keyword},'%'))</if>
+        </where>
+        order by e.id desc
+    </select>
+    <select id="getEquipment" resultType="com.sky.rental.model.RentalEquipment">
+        select <include refid="equipmentColumns"/> from rental_equipment e join rental_category c on c.id=e.category_id where e.id=#{id}
+    </select>
+</mapper>
