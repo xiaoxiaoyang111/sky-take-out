@@ -1,6 +1,7 @@
 package com.sky.config;
 
 import com.sky.interceptor.JwtTokenAdminInterceptor;
+import com.sky.rental.auth.RentalAuthInterceptor;
 import com.sky.json.JacksonObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,9 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
     @Autowired
     private JwtTokenAdminInterceptor jwtTokenAdminInterceptor;
 
+    @Autowired
+    private RentalAuthInterceptor rentalAuthInterceptor;
+
     @Value("${sky.upload.path}")
     private String uploadPath;
 
@@ -42,6 +46,7 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
      */
     protected void addInterceptors(InterceptorRegistry registry) {
         log.info("开始注册自定义拦截器...");
+        registry.addInterceptor(rentalAuthInterceptor).addPathPatterns("/rental/**");
         registry.addInterceptor(jwtTokenAdminInterceptor)
                 .addPathPatterns("/admin/**")
                 .excludePathPatterns("/admin/employee/login");

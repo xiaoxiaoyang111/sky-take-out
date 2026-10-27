@@ -1,6 +1,15 @@
 server:
   port: 8080
 
+rental:
+  jwt-secret: ${RENTAL_JWT_SECRET:rental-local-development-change-before-deployment-2026}
+  assistant:
+    enabled: ${RENTAL_ASSISTANT_ENABLED:false}
+    endpoint: ${RENTAL_ASSISTANT_ENDPOINT:}
+    api-key: ${RENTAL_ASSISTANT_API_KEY:}
+    model: ${RENTAL_ASSISTANT_MODEL:}
+    token-field: ${RENTAL_ASSISTANT_TOKEN_FIELD:max_completion_tokens}
+
 spring:
   redis:
     host: ${SKY_REDIS_HOST:localhost}
@@ -12,7 +21,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 2MB
-      max-request-size: 2MB
+      max-request-size: 3MB
   profiles:
     active: dev
   main:
