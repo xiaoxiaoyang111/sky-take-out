@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sky.rental.mapper.RentalBookingMapper">
+  <insert id="insertOrder" useGeneratedKeys="true" keyProperty="id">
+    insert into rental_order(order_no,customer_id,equipment_id,asset_id,equipment_name,asset_code,start_date,end_date,rental_days,daily_rate,rental_amount,deposit_amount,status,request_id,remark,created_at,updated_at)
+    values(#{orderNo},#{customerId},#{equipmentId},#{assetId},#{equipmentName},#{assetCode},#{startDate},#{endDate},#{rentalDays},#{dailyRate},#{rentalAmount},#{depositAmount},#{status},#{requestId},#{remark},#{createdAt},#{updatedAt})
+  </insert>
+  <sql id="filter">
+    <where>
+      <if test="customerId != null">customer_id=#{customerId}</if>
+      <if test="status != null">and status=#{status}</if>
+      <if test="keyword != null">and (order_no like concat('%',#{keyword},'%') or equipment_name like concat('%',#{keyword},'%'))</if>
+    </where>
+  </sql>
+  <select id="page" resultType="com.sky.rental.model.RentalOrder">
+    select * from rental_order <include refid="filter"/> order by id desc limit #{limit} offset #{offset}
+  </select>
+  <select id="count" resultType="long">select count(*) from rental_order <include refid="filter"/></select>
+</mapper>
