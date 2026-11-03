@@ -15,6 +15,11 @@ import java.util.UUID;
 public class RentalImageService {
     private final Path directory;
     public RentalImageService(@Value("${sky.upload.path}") String path) { directory=Paths.get(path).toAbsolutePath().normalize(); }
+    public void removeUploaded(String url) {
+        if(url==null||!url.matches("/images/rental-[a-f0-9-]{36}\\.(png|jpg)"))return;
+        try{Files.deleteIfExists(directory.resolve(url.substring("/images/".length())));}
+        catch(IOException ex){org.slf4j.LoggerFactory.getLogger(RentalImageService.class).warn("Could not remove an unused rental upload");}
+    }
     public String upload(MultipartFile file) {
         if(file==null || file.isEmpty() || file.getSize()>2L*1024*1024) throw new BaseException("图片须小于2MB且不能为空");
         try {

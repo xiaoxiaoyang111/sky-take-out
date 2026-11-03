@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sky.rental.mapper.RentalMemberMapper">
+  <select id="favorites" resultType="com.sky.rental.model.RentalMemberModels$FavoriteView">
+    select f.id,f.equipment_id,e.name equipment_name,e.image,e.brand,e.daily_rate,e.deposit,
+      (e.status=1 and c.status=1) available,f.created_at
+    from rental_favorite f join rental_equipment e on e.id=f.equipment_id join rental_category c on c.id=e.category_id
+    where f.customer_id=#{customerId} order by f.id desc limit #{limit} offset #{offset}
+  </select>
+  <select id="reviews" resultType="com.sky.rental.model.RentalMemberModels$ReviewView">
+    select r.id,r.order_id,o.equipment_name,r.rating,r.content,r.created_at
+    from rental_review r join rental_order o on o.id=r.order_id
+    where r.customer_id=#{customerId} order by r.id desc limit #{limit} offset #{offset}
+  </select>
+</mapper>

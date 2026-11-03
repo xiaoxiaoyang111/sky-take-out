@@ -37,7 +37,7 @@ public class RentalAuthInterceptor implements HandlerInterceptor {
             if(!"rental-v1".equals(c.getAudience())) return error(response,401,"登录已失效");
             String role=c.get("role",String.class); Number id=c.get("id",Number.class);
             if(id==null || id.longValue()<=0 || !("USER".equals(role)||"ADMIN".equals(role))) return error(response,401,"登录已失效");
-            if((path.startsWith("/rental/admin/") && !"ADMIN".equals(role)) || ((path.startsWith("/rental/orders") || path.startsWith("/rental/assistant/")) && !"USER".equals(role))) return error(response,403,"无权访问");
+            if((path.startsWith("/rental/admin/") && !"ADMIN".equals(role)) || ((path.startsWith("/rental/orders") || path.startsWith("/rental/assistant/") || path.startsWith("/rental/member/") || path.startsWith("/rental/favorites") || path.startsWith("/rental/reviews")) && !"USER".equals(role))) return error(response,403,"无权访问");
             if("ADMIN".equals(role)) {
                 Employee employee=employees.getById(id.longValue());
                 if(employee==null || !Integer.valueOf(1).equals(employee.getStatus())) return error(response,401,"员工账号已停用或不存在");

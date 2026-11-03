@@ -41,25 +41,31 @@ public class RentalAuthService {
         if (admin) {
             Employee e=employees.getByUsername(request.getUsername());
             String digest=DigestUtils.md5DigestAsHex(request.getPassword().getBytes(StandardCharsets.UTF_8));
-            if(e==null || !digest.equals(e.getPassword())) throw new BaseException("用户名或密码错误");
+            boolean matches=e!=null && (e.getPassword()!=null&&e.getPassword().startsWith("$2")?encoder.matches(request.getPassword(),e.getPassword()):digest.equals(e.getPassword()));
+            if(!matches) throw new BaseException("用户名或密码错误");
             if(!Integer.valueOf(1).equals(e.getStatus())) throw new BaseException("员工账号已停用");
             return loginResult(e.getId(),"ADMIN",e.getUsername(),e.getName());
         }
         RentalCustomer c=customers.find(request.getUsername());
         if(c==null || !encoder.matches(request.getPassword(),c.getPasswordHash())) throw new BaseException("用户名或密码错误");
-        return loginResult(c.getId(),"USER",c.getUsername(),c.getDisplayName());
+        return loginResult(c.getId(),"USER",c.getUsername(),c.getDisplayName(),c.getAvatarUrl());
     }
     private void validateCredentials(RentalRequests.Login r, boolean register) {
         if(r==null || r.getUsername()==null || r.getPassword()==null || r.getUsername().length()>32 || r.getUsername().isEmpty()) throw new BaseException("请输入用户名和密码");
         int bytes=r.getPassword().getBytes(StandardCharsets.UTF_8).length;
         if(bytes<1 || bytes>72 || register && (bytes<8 || !r.getUsername().matches("[A-Za-z0-9_]{3,32}"))) throw new BaseException("用户名须为3至32位字母数字下划线，密码须为8至72字节");
     }
-    private Map<String,Object> loginResult(Long id,String role,String username,String name) {
+    private Map<String,Object> loginResult(Long id,String role,String username,String name) { return loginResult(id,role,username,name,null); }
+    private Map<String,Object> loginResult(Long id,String role,String username,String name,String avatarUrl) {
         Map<String,Object> claims=new LinkedHashMap<>(); claims.put("aud","rental-v1"); claims.put("id",id); claims.put("role",role); claims.put("username",username); claims.put("name",name);
         Map<String,Object> result=new LinkedHashMap<>(); result.put("token",JwtUtil.createJWT(secret,7200000,claims)); result.put("role",role);
-        Map<String,Object> user=new LinkedHashMap<>();user.put("id",id);user.put("username",username);user.put("name",name);result.put("user",user);return result;
+        Map<String,Object> user=new LinkedHashMap<>();user.put("id",id);user.put("username",username);user.put("name",name);user.put("avatarUrl",avatarUrl);result.put("user",user);return result;
     }
     public Map<String,Object> me() {
-        Map<String,Object> result=new LinkedHashMap<>(); result.put("id",RentalContext.getUserId());result.put("role",RentalContext.getRole());result.put("name",RentalContext.getName());result.put("username",RentalContext.getUsername());return result;
+        Map<String,Object> result=new LinkedHashMap<>();result.put("id",RentalContext.getUserId());result.put("role",RentalContext.getRole());
+        if("USER".equals(RentalContext.getRole())) {
+            RentalCustomer c=customers.findById(RentalContext.getUserId());if(c==null)throw new BaseException("账号不存在，请重新登录");result.put("name",c.getDisplayName());result.put("avatarUrl",c.getAvatarUrl());result.put("username",c.getUsername());
+        } else {result.put("name",RentalContext.getName());result.put("username",RentalContext.getUsername());}
+        return result;
     }
 }

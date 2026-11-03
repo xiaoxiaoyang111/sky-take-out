@@ -9,8 +9,11 @@ param(
 $ErrorActionPreference = 'Stop'
 # Supply MYSQL_PWD in the invoking shell; do not place passwords in command arguments or this file.
 $rentalRoot = Split-Path $PSScriptRoot -Parent
-$sqlFiles = @((Join-Path $rentalRoot 'database/rental/001-schema.sql'))
+$sqlFiles = @((Join-Path $rentalRoot 'database/rental/000-employee.sql'))
+$sqlFiles += Join-Path $rentalRoot 'database/rental/001-schema.sql'
 $sqlFiles += Join-Path $rentalRoot 'database/rental/001b-order-index.sql'
+$sqlFiles += Join-Path $rentalRoot 'database/rental/003-member-center.sql'
+$sqlFiles += Join-Path $rentalRoot 'database/rental/004-customer-avatar.sql'
 if ($DemoCatalog) { $sqlFiles += Join-Path $rentalRoot 'database/rental/002-demo-catalog.sql' }
 foreach ($sqlFile in $sqlFiles) {
     $sql = [System.IO.File]::ReadAllText($sqlFile, [System.Text.Encoding]::UTF8)
