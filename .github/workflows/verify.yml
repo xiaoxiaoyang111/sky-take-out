@@ -1,0 +1,57 @@
+name: Rental verification
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-password
+          MYSQL_DATABASE: rental_ci
+        ports: ['3306:3306']
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-only-password" --health-interval=10s --health-timeout=5s --health-retries=12
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=3s --health-retries=12
+    env:
+      SKY_DB_HOST: 127.0.0.1
+      SKY_DB_DATABASE: rental_ci
+      SKY_DB_USERNAME: root
+      SKY_DB_PASSWORD: ci-only-password
+      SKY_REDIS_HOST: 127.0.0.1
+      SKY_REDIS_PASSWORD: ''
+      SKY_DB_INTEGRATION: 'true'
+      SKY_REDIS_INTEGRATION: 'true'
+      RENTAL_JWT_SECRET: ci-only-rental-signing-key-not-for-deployment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/rental-web/package-lock.json
+      - name: Initialize isolated integration database
+        env:
+          MYSQL_PWD: ci-only-password
+        run: |
+          for sql in database/rental/000-employee.sql database/rental/001-schema.sql database/rental/001b-order-index.sql database/rental/003-member-center.sql database/rental/004-customer-avatar.sql; do
+            mysql --host=127.0.0.1 --user=root rental_ci < "$sql"
+          done
+          mysql --host=127.0.0.1 --user=root rental_ci < database/testing/legacy-schema.sql
+      - name: Java 8 compatible backend package and integration tests
+        run: mvn -B -Dmaven.compiler.release=8 package
+      - name: Frontend tests and production build
+        working-directory: frontend/rental-web
+        run: |
+          npm ci
+          npm test
+          npm run build

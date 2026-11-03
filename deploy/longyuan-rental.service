@@ -1,0 +1,23 @@
+[Unit]
+Description=Longyuan equipment rental
+After=network.target
+
+[Service]
+Type=simple
+User=rental
+Group=rental
+WorkingDirectory=/opt/longyuan-rental
+EnvironmentFile=/etc/longyuan-rental.env
+ExecStart=/usr/bin/java -Dfile.encoding=UTF-8 -Duser.timezone=Asia/Shanghai -jar /opt/longyuan-rental/rental.jar
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/longyuan-rental
+
+[Install]
+WantedBy=multi-user.target

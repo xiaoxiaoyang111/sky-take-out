@@ -1,0 +1,97 @@
+{
+  "date": "2026-11-03",
+  "base": "http://127.0.0.1:8082",
+  "environment": {
+    "platform": "win32",
+    "os": "10.0.26200",
+    "cpu": "AMD Ryzen 7 7840H with Radeon 780M Graphics",
+    "logicalCpus": 16,
+    "node": "v24.18.0"
+  },
+  "checks": [
+    {
+      "name": "Deep links and services ready",
+      "passed": true,
+      "elapsedMs": 62
+    },
+    {
+      "name": "User role cannot access staff routes",
+      "passed": true,
+      "elapsedMs": 56
+    },
+    {
+      "name": "Catalog cache is invalidated after staff writes",
+      "passed": true,
+      "elapsedMs": 31
+    },
+    {
+      "name": "Nickname and avatar persist on the account",
+      "passed": true,
+      "elapsedMs": 223
+    },
+    {
+      "name": "Favorites are idempotent and private",
+      "passed": true,
+      "elapsedMs": 89
+    },
+    {
+      "name": "Quote, idempotent reservation and ownership",
+      "passed": true,
+      "elapsedMs": 95
+    },
+    {
+      "name": "Staff confirm, pickup and return complete the lifecycle",
+      "passed": true,
+      "elapsedMs": 91
+    },
+    {
+      "name": "Review requires an owned completed order and is not duplicated",
+      "passed": true,
+      "elapsedMs": 112
+    },
+    {
+      "name": "20 competing reservations for one asset produce exactly one winner",
+      "passed": true,
+      "elapsedMs": 2196
+    },
+    {
+      "name": "Assistant rules and private history work",
+      "passed": true,
+      "elapsedMs": 31
+    },
+    {
+      "name": "Real model answers through the running backend",
+      "passed": true,
+      "elapsedMs": 1882
+    },
+    {
+      "name": "Bounded HTTP catalog benchmark after warmup",
+      "passed": true,
+      "elapsedMs": 324
+    }
+  ],
+  "competition": {
+    "requests": 20,
+    "winners": 1,
+    "businessRejections": 19
+  },
+  "realModel": {
+    "mode": "MODEL",
+    "elapsedMs": 1873
+  },
+  "benchmark": {
+    "endpoint": "/equipment?page=1&pageSize=12",
+    "requests": 200,
+    "concurrency": 8,
+    "warmup": 5,
+    "errors": 0,
+    "elapsedSeconds": 0.213,
+    "requestsPerSecond": 940.07,
+    "p50Ms": 7.99,
+    "p95Ms": 11.61,
+    "maxMs": 15.13,
+    "scope": "Local warmed HTTP sample; not a production capacity or improvement claim"
+  },
+  "passed": true,
+  "cleanup": true
+}

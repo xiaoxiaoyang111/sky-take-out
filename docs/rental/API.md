@@ -1,4 +1,4 @@
-# 光屿器材租赁：网页版 V1 接口契约
+# 龙院摄影器材：网页版 V1 接口契约
 
 状态：开发契约，验收记录见 DEVELOPMENT.md。已有外卖接口保留。所有路径直接访问后端时以 `/rental` 开头，前端同源代理，不经过旧 `/api/` 改写。
 
@@ -31,6 +31,22 @@
 - `GET /rental/equipment/{id}/availability?startDate=&endDate=` → `{equipmentId,startDate,endDate,availableCount}`。
 - `GET /rental/equipment/{id}/quote?startDate=&endDate=` → `{equipmentId,startDate,endDate,rentalDays,dailyRate,rentalAmount,depositAmount,totalAmount,availableCount}`。
 - quote 为即时参考，不承诺锁定库存；创建订单必须在事务内再次校验。
+
+## 个人中心（USER）
+
+- `GET /rental/member/summary`：本人收藏、订单、评价数量`{favorites,orders,reviews}`。
+- `PUT /rental/member/profile`：`{name}`，1～32字符昵称，返回当前资料`{id,username,name,role,avatarUrl}`；不支持通过此接口修改账号、身份或头像URL。
+- `GET /rental/favorites?page=&pageSize=`：本人的收藏分页，停用器材仍保留但标记不可用。
+- `GET /rental/favorites/{id}/status`：是否已收藏该器材。
+- `PUT /rental/favorites/{id}`：幂等收藏公开器材；`DELETE`同路径只移除自己的收藏。
+- `GET /rental/reviews?page=&pageSize=`：本人历史评价分页。
+- `POST /rental/reviews`：`{orderId,rating,content}`，评分1～5、内容1～500字符；只允许评价本人已归还订单，一单一次。
+
+## 用户头像（USER，2026-10-29新增）
+
+- `POST /rental/member/avatar`：multipart字段`file`，上传并立即设置当前登录客户头像，返回`{avatarUrl}`。不接受客户ID或任意图片URL作为更新对象；普通客户只能更新自己，游客401、员工403。
+- PNG或JPEG，单文件不超过2MB；实际解码检查类型、损坏内容与尺寸（宽高不超过8192、总像素不超过1600万），使用服务端随机文件名。伪装类型拒绝，失败不更新原头像。
+- 用户登录/注册结果的`user`、`GET /rental/me`和昵称更新结果新增`avatarUrl`，未上传为null。新表`rental_customer_avatar(customer_id,avatar_url,updated_at)`由`004-customer-avatar.sql`创建；初始化脚本已包含。头像文件需随上传目录持久化备份；更换后的旧文件暂保留，后续再按引用关系做清理。
 
 ## 用户订单（USER）
 
@@ -70,12 +86,14 @@
 
 ## 租赁助手与公开缓存（2026-10-27新增）
 
-- `GET /rental/assistant/status`：公开配置状态`{modelConfigured,historyMinutes,minuteLimit}`，不返回服务地址、密钥或模型内部配置。
+- `GET /rental/assistant/status`：公开配置状态`{modelConfigured,historyMinutes,minuteLimit:0,dailyLimit:0,unlimited:true}`，0表示不设置咨询次数上限；不返回服务地址、密钥或模型内部配置。
 - `GET /rental/assistant/history?sessionId=`：USER本人会话，返回最近10轮；sessionId为16～64位字母数字或连字符。
 - `POST /rental/assistant/messages`：USER，`{sessionId,message,action,allowModel,equipmentId,startDate,endDate}`。message为1～600字符；action为`ASK`、`RULES`、`QUOTE`、`ORDERS`。QUOTE需型号和有效租期；ORDERS只查本人最近5单。模型咨询需显式`allowModel=true`，规则和业务工具不调用模型。
-- 回复`{question,answer,mode,createdAt,sources}`；mode为`RULES`、`LIVE`或`MODEL`，sources为站内来源路径；createdAt为ISO8601时间。模型无配置或不可用时不返回伪造答案。
-- `DELETE /rental/assistant/history?sessionId=`：USER清除本人该会话，额度不重置。
-- 助手同一用户最多一个在途请求，每60秒6次、每24小时100次，Redis不可用时拒绝咨询并提示；租赁查询和预约不依赖助手可用性。
+- 回复`{question,answer,mode,createdAt,sources,equipmentLinks}`；mode为`RULES`、`LIVE`或`MODEL`，sources为站内来源路径；createdAt为ISO8601时间。equipmentLinks为后端核验的`[{id,name}]`，前端只为回复中准确匹配的器材名称生成`/equipment/{id}`站内链接，不执行模型生成的HTML或链接。旧历史缺少该字段时按普通文本展示。
+- `DELETE /rental/assistant/history?sessionId=`：USER清除本人该会话。
+- 不设置分钟/每日咨询次数上限，不读取或增加旧minute/day计数键；保留同一用户最多一个在途请求的保护。Redis不可用时助手仍明确报错；租赁查询和预约不依赖助手可用性。供应商自身的额度、余额与服务限流不由本项目控制。
+- 模型客户端每实例最多4个同时生成请求，可用`RENTAL_ASSISTANT_MAX_CONCURRENT_REQUESTS`配置1～16；忙时返回业务错误，不排队或自动重试。这不是跨实例限流，也不限制客户每日/分钟咨询总次数。
+- 自由咨询提供最多50个已上架且有未退役实物的型号，以及当前选中型号的公开资料；目录不代表具体日期可租。名称在答案中出现后再次查验公开状态，停用、无实物、虚构型号或同名歧义不生成链接。日期可用性仍通过实时报价接口确认。
 - 用户端目录缓存60秒，提交分类/型号/实物维护后切换缓存版本；实时库存、报价、订单和预约不缓存。配置与已验证边界见`ASSISTANT.md`。
 
 ## 数据表结构
@@ -88,5 +106,8 @@
 - asset：id,equipment_id,asset_code,status,created_at。
 - order：id,order_no,customer_id,equipment_id,asset_id,equipment_name,asset_code,start_date,end_date,rental_days,daily_rate,rental_amount,deposit_amount,status,request_id,remark,return_note,created_at,updated_at,confirmed_at,picked_up_at,returned_at。
 - order_event：id,order_id,actor_role,actor_id,action,note,created_at。
+- favorite：id,customer_id,equipment_id,created_at，客户+器材唯一。
+- review：id,customer_id,order_id,rating,content,created_at，订单唯一。
+- customer_avatar：customer_id,avatar_url,updated_at，客户唯一。
 
 并发协议：预约与器材/实物状态变更统一先锁 equipment 行；订单状态变更也先锁所属 equipment，再锁 order。占用查询使用当前读，避免事务快照造成超订。用户+request_id、资产编号、订单号均有唯一约束。禁止以 Redis 缓存为唯一库存依据。

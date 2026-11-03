@@ -4,9 +4,11 @@ param(
     [int]$WebPort = 8082,
     [string]$NginxHome = 'C:\AAAAA\One_Study\frontend\sky-takeout\nginx-1.20.2',
     [switch]$Build,
-    [switch]$UseIdeaRedisConfiguration
+    [switch]$UseIdeaRedisConfiguration,
+    [switch]$DeepSeek
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Get-IdeaRedisPassword.ps1')
 if ($BackendPort -lt 1024 -or $BackendPort -gt 65535 -or $WebPort -lt 1024 -or $WebPort -gt 65535 -or $BackendPort -eq $WebPort) {
     throw 'Choose different backend/web ports in the range 1024-65535.'
 }
@@ -27,6 +29,8 @@ function Test-LocalPort([int]$Port) {
 }
 
 if (Test-LocalPort $WebPort) { throw "Web port $WebPort is occupied. Use Stop-RentalLocal.ps1 for this task, or select another port." }
+if ($DeepSeek -and !$env:DEEPSEEK_API_KEY -and !$env:RENTAL_ASSISTANT_API_KEY) { throw 'DeepSeek requires DEEPSEEK_API_KEY. Use Start-DeepSeekLocal.ps1 for masked input.' }
+if ($DeepSeek -and (Test-LocalPort $BackendPort)) { throw 'Backend port is occupied. Stop the managed instance before enabling DeepSeek.' }
 if ($Build) {
     $maven = Get-Command mvn.cmd -ErrorAction SilentlyContinue
     $mavenPath = if ($maven) { $maven.Source } else {
@@ -57,11 +61,7 @@ $savedSecret = $env:RENTAL_JWT_SECRET
 try {
     if ($UseIdeaRedisConfiguration -and !$env:SKY_REDIS_PASSWORD) {
         $ideaPath = Join-Path $repository '.idea\workspace.xml'
-        if (Test-Path -LiteralPath $ideaPath) {
-            [xml]$workspace = Get-Content -LiteralPath $ideaPath -Raw
-            $redisNode = $workspace.SelectSingleNode('//configuration[@name="SkyApplication"]//env[@name="SKY_REDIS_PASSWORD"]')
-            if ($redisNode) { $env:SKY_REDIS_PASSWORD = $redisNode.GetAttribute('value') }
-        }
+        $env:SKY_REDIS_PASSWORD = Get-IdeaRedisPassword -Path $ideaPath
     }
     if (!(Test-LocalPort $BackendPort)) {
         # A new ephemeral key avoids using the published development fallback for this instance.
@@ -74,6 +74,7 @@ try {
         $runJar = Join-Path $runtime 'rental-local.jar'
         Copy-Item -LiteralPath $jar -Destination $runJar
         $javaArguments = @('-Dfile.encoding=UTF-8', '-Duser.timezone=Asia/Shanghai', '-jar', ('"' + $runJar + '"'), "--server.port=$BackendPort", '--server.address=127.0.0.1', '--logging.level.com.sky.mapper=INFO', '--logging.level.com.sky.interceptor=ERROR', '--logging.level.com.sky.controller.admin.EmployeeController=ERROR')
+        if ($DeepSeek) { $javaArguments += '--spring.profiles.active=dev,deepseek' }
         $backend = Start-Process -FilePath java -ArgumentList $javaArguments -WorkingDirectory $repository -WindowStyle Hidden -RedirectStandardOutput (Join-Path $runtime 'backend.log') -RedirectStandardError (Join-Path $runtime 'backend-error.log') -PassThru
         $backendPid = $backend.Id
     }
@@ -102,10 +103,15 @@ http {
         root "__DIST__";
         index index.html;
         client_max_body_size 3m;
+        add_header X-Content-Type-Options nosniff always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        add_header X-Frame-Options DENY always;
         location /rental/ {
             proxy_pass http://127.0.0.1:__BACKEND_PORT__;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 60s;
         }
         location /images/ {
             proxy_pass http://127.0.0.1:__BACKEND_PORT__;
@@ -119,13 +125,14 @@ http {
     $config = $config.Replace('__MIME__', $mimeTypes.Replace('\', '/')).Replace('__DIST__', $dist.Replace('\', '/')).Replace('__WEB_PORT__', [string]$WebPort).Replace('__BACKEND_PORT__', [string]$BackendPort)
     [IO.File]::WriteAllText($configPath, $config, [Text.UTF8Encoding]::new($false))
     $prefix = $runtime.Replace('\', '/') + '/'
-    & $nginx -t -p $prefix -c nginx.conf
-    if ($LASTEXITCODE -ne 0) { throw 'Nginx configuration validation failed.' }
+    # Nginx writes successful validation to stderr; PS 5.1 must inspect its exit code.
+    $validation = Start-Process -FilePath $nginx -ArgumentList @('-t', '-p', ('"' + $prefix + '"'), '-c', 'nginx.conf') -WorkingDirectory $NginxHome -WindowStyle Hidden -Wait -PassThru -RedirectStandardOutput (Join-Path $runtime 'nginx-check.log') -RedirectStandardError (Join-Path $runtime 'nginx-check-error.log')
+    if ($validation.ExitCode -ne 0) { throw 'Nginx configuration validation failed. Check runtime nginx-check logs.' }
     Start-Process -FilePath $nginx -ArgumentList @('-p', ('"' + $prefix + '"'), '-c', 'nginx.conf') -WorkingDirectory $NginxHome -WindowStyle Hidden | Out-Null
     $nginxStarted = $true
     $webReady = $false
     for ($attempt = 0; $attempt -lt 20; $attempt++) {
-        try { if ((Invoke-WebRequest "http://127.0.0.1:$WebPort/" -TimeoutSec 2).StatusCode -eq 200) { $webReady = $true; break } } catch { }
+        try { if ((Invoke-WebRequest "http://127.0.0.1:$WebPort/" -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200) { $webReady = $true; break } } catch { }
         Start-Sleep -Milliseconds 250
     }
     if (!$webReady) { throw 'Nginx did not become ready.' }

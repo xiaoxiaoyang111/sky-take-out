@@ -44,6 +44,9 @@ class RentalAuthTest {
     @Test void rejectDuplicateRegistration() { doThrow(new DuplicateKeyException("duplicate")).when(customers).insert(any());assertThrows(BaseException.class,()->service.register(request())); }
     @Test void enforceBcryptByteLengthNotCharacterLength() { RentalRequests.Login r=request();r.setPassword(String.join("",java.util.Collections.nCopies(25,"密")));assertThrows(BaseException.class,()->service.register(r));verifyNoInteractions(customers); }
     @Test void unknownCustomerRejected() { assertThrows(BaseException.class,()->service.login(request(),false)); }
+    @Test void rentalStaffAcceptsBcryptWithoutBreakingLegacyEmployeeAccounts() {
+        Employee employee=new Employee();employee.setId(1L);employee.setName("员工");employee.setUsername("rental_test");employee.setStatus(1);employee.setPassword(new BCryptPasswordEncoder().encode(request().getPassword()));when(employees.getByUsername("rental_test")).thenReturn(employee);assertEquals("ADMIN",service.login(request(),true).get("role"));RentalRequests.Login wrong=request();wrong.setPassword("wrong-password");assertThrows(BaseException.class,()->service.login(wrong,true));
+    }
     @Test void adminUsesEmployeeAndRejectsDisabled() {
         Employee employee=new Employee();employee.setId(1L);employee.setName("员工");employee.setUsername("rental_test");employee.setStatus(0);employee.setPassword(DigestUtils.md5DigestAsHex(request().getPassword().getBytes(StandardCharsets.UTF_8)));
         when(employees.getByUsername("rental_test")).thenReturn(employee);assertThrows(BaseException.class,()->service.login(request(),true));employee.setStatus(1);assertEquals("ADMIN",service.login(request(),true).get("role"));

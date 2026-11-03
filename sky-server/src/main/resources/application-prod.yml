@@ -1,0 +1,33 @@
+# No development secrets or local proxy are imported by this profile.
+server:
+  address: 127.0.0.1
+  port: ${SERVER_PORT:8080}
+spring:
+  datasource:
+    druid:
+      url: ${SKY_DB_URL}
+      username: ${SKY_DB_USERNAME}
+      password: ${SKY_DB_PASSWORD}
+  redis:
+    host: ${SKY_REDIS_HOST:127.0.0.1}
+    password: ${SKY_REDIS_PASSWORD}
+sky:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    host: ${SKY_DB_HOST:127.0.0.1}
+    port: ${SKY_DB_PORT:3306}
+    database: ${SKY_DB_DATABASE:sky_take_out}
+    username: ${SKY_DB_USERNAME}
+    password: ${SKY_DB_PASSWORD}
+  jwt:
+    admin-secret-key: ${SKY_ADMIN_JWT_SECRET}
+  upload:
+    path: ${SKY_UPLOAD_PATH}
+rental:
+  jwt-secret: ${RENTAL_JWT_SECRET}
+logging:
+  level:
+    com.sky.mapper: INFO
+    com.sky.rental.mapper: INFO
+    com.sky.controller.admin.EmployeeController: ERROR
+    com.sky.interceptor: ERROR

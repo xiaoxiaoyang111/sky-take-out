@@ -6,7 +6,7 @@ JDK 17（当前本机）、Maven、MySQL 8、Redis、Node.js/npm。沿用 Spring
 
 ## 数据库初始化
 
-后端仍读取本机既有 `application-dev.yml` 的数据库配置。不要复制其中的真实密码到 README、命令提交或新文件。新部署请通过本机环境或外部配置管理凭据，并替换开发密钥。
+开发环境从 `SKY_DB_HOST/PORT/DATABASE/USERNAME/PASSWORD` 读取数据库设置；本机旧设置已保存在被忽略的 `.rental/application-local.yml`，仅作为开发fallback，环境变量优先。真实凭据不写入仓库。生产配置、首次管理员与回退步骤见 [PRODUCTION.md](PRODUCTION.md)。
 
 先在当前 shell 安全设置 `MYSQL_PWD`，然后执行（替换实际库名和用户名）：
 

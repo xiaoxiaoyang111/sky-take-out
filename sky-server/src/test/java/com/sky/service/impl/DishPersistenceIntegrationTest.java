@@ -6,6 +6,7 @@ import com.sky.entity.DishFlavor;
 import com.sky.service.DishService;
 import com.sky.vo.DishVO;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 @EnabledIfEnvironmentVariable(named = "SKY_DB_INTEGRATION", matches = "true")
 class DishPersistenceIntegrationTest {
+    private Long fixtureCategoryId;
+    private String fixtureCategoryName;
+
+    @BeforeEach
+    void createOwnedCategory() {
+        String name="CDCat_"+UUID.randomUUID().toString().substring(0,12);
+        fixtureCategoryName=name;
+        jdbcTemplate.update("insert into category(type,name,sort,status) values(1,?,0,1)",name);
+        fixtureCategoryId=jdbcTemplate.queryForObject("select id from category where name=?",Long.class,name);
+    }
 
     @Autowired
     private DishService dishService;
@@ -33,6 +44,7 @@ class DishPersistenceIntegrationTest {
     @AfterEach
     void clearContext() {
         BaseContext.removeCurrentId();
+        if(fixtureCategoryId!=null)jdbcTemplate.update("delete from category where id=?",fixtureCategoryId);
     }
 
     @Test
@@ -59,7 +71,7 @@ class DishPersistenceIntegrationTest {
                     "select id from dish where name = ?", Long.class, goodName);
             DishVO loaded = dishService.getById(dishId);
             assertEquals(goodName, loaded.getName());
-            assertEquals("酒水饮料", loaded.getCategoryName());
+            assertEquals(fixtureCategoryName, loaded.getCategoryName());
             assertEquals(1, loaded.getFlavors().size());
             assertEquals(dishId, loaded.getFlavors().get(0).getDishId());
             assertEquals("[\"Mild\",\"Hot\"]", loaded.getFlavors().get(0).getValue());
@@ -147,12 +159,12 @@ class DishPersistenceIntegrationTest {
             id = jdbcTemplate.queryForObject("select id from dish where name = ?", Long.class, name);
             Long dishId = id;
 
-            assertTrue(dishService.listByCategoryId(11L).stream().anyMatch(item -> dishId.equals(item.getId())));
+            assertTrue(dishService.listByCategoryId(fixtureCategoryId).stream().anyMatch(item -> dishId.equals(item.getId())));
             assertEquals("起售中的菜品不能删除", assertThrows(RuntimeException.class,
                     () -> dishService.deleteBatch(Collections.singletonList(dishId))).getMessage());
 
             dishService.startOrStop(0, id);
-            assertTrue(dishService.listByCategoryId(11L).stream().noneMatch(item -> dishId.equals(item.getId())));
+            assertTrue(dishService.listByCategoryId(fixtureCategoryId).stream().noneMatch(item -> dishId.equals(item.getId())));
             assertEquals(name, dishService.getById(id).getName());
             assertEquals(0, dishService.getById(id).getStatus());
             assertEquals(1L, jdbcTemplate.queryForObject("select update_user from dish where id = ?", Long.class, id));
@@ -187,9 +199,9 @@ class DishPersistenceIntegrationTest {
             assertEquals(1, nameOnly.size());
             assertEquals(matchingName, nameOnly.get(0).getName());
             assertEquals(1, nameOnly.get(0).getStatus());
-            assertEquals(1, dishService.list(11L, matchingName).size());
+            assertEquals(1, dishService.list(fixtureCategoryId, matchingName).size());
             assertTrue(dishService.list(Long.MAX_VALUE, matchingName).isEmpty());
-            assertTrue(dishService.list(11L, "NoMatch_" + token).isEmpty());
+            assertTrue(dishService.list(fixtureCategoryId, "NoMatch_" + token).isEmpty());
         } finally {
             jdbcTemplate.update("delete from dish where name in (?, ?, ?)",
                     matchingName, stoppedName, unrelatedName);
@@ -199,7 +211,7 @@ class DishPersistenceIntegrationTest {
     private DishDTO dish(String name, String flavorValue) {
         DishDTO dto = new DishDTO();
         dto.setName(name);
-        dto.setCategoryId(11L);
+        dto.setCategoryId(fixtureCategoryId);
         dto.setPrice(new BigDecimal("12.50"));
         dto.setImage("http://localhost:8080/images/test.png");
         dto.setFlavors(Collections.singletonList(
