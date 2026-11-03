@@ -9,14 +9,9 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.*;
 
-/** All keys are scoped by authenticated customer; scripts keep quotas and history atomic. */
+/** All keys are scoped by authenticated customer; history and lease release are atomic. */
 @Service
 public class RentalAssistantStore {
-    private static final DefaultRedisScript<Long> LIMIT = new DefaultRedisScript<>(
-        "local m=tonumber(redis.call('GET',KEYS[1]) or '0'); local d=tonumber(redis.call('GET',KEYS[2]) or '0'); " +
-        "if m>=6 or d>=100 then return 0 end; " +
-        "if redis.call('INCR',KEYS[1])==1 then redis.call('EXPIRE',KEYS[1],60) end; " +
-        "if redis.call('INCR',KEYS[2])==1 then redis.call('EXPIRE',KEYS[2],86400) end; return 1", Long.class);
     private static final DefaultRedisScript<Long> UNLOCK = new DefaultRedisScript<>(
         "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) end; return 0",Long.class);
     private static final DefaultRedisScript<Long> APPEND = new DefaultRedisScript<>(
@@ -28,9 +23,6 @@ public class RentalAssistantStore {
         String token=UUID.randomUUID().toString();
         try {
             if(!Boolean.TRUE.equals(redis.opsForValue().setIfAbsent(lockKey(user),token,Duration.ofSeconds(60)))) throw new BaseException("上一条咨询仍在处理中，请稍后再试");
-            if(!Long.valueOf(1).equals(redis.execute(LIMIT,Arrays.asList(prefix(user)+"minute",prefix(user)+"day")))) {
-                release(user,token); throw new BaseException("咨询次数已达限制，请稍后再试（每分钟6次，每24小时100次）");
-            }
             return token;
         } catch(BaseException ex) { throw ex; }
         catch(RuntimeException ex) { release(user,token); throw unavailable(); }

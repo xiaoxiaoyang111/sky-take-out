@@ -27,5 +27,23 @@ class RentalAssistantServiceTest {
     @Test void failedToolReleasesLeaseAndDoesNotAppendSuccess() { Request r=request("QUOTE");when(booking.quote(any(),any(),any())).thenThrow(new BaseException("invalid date"));assertThrows(BaseException.class,()->service.ask(r));verify(store).release(9L,"lease");verify(store,never()).append(any(),any(),any()); }
     @Test void modelRequiresExplicitConsent() { when(model.configured()).thenReturn(true);assertThrows(BaseException.class,()->service.ask(request("ASK")));verify(model,never()).answer(any(),any(),any()); }
     @Test void privateToolHistoryNeverIncludedInModelPrompt() { Turn privateTurn=new Turn();privateTurn.setMode("LIVE");privateTurn.setAnswer("PRIVATE_ORDER");when(store.history(anyLong(),anyString())).thenReturn(Collections.singletonList(privateTurn));when(model.configured()).thenReturn(true);when(model.answer(any(),any(),any())).thenReturn("建议确认相机卡口");Request r=request("ASK");r.setAllowModel(true);assertEquals("MODEL",service.ask(r).getMode());verify(model).answer(argThat(s->!s.contains("PRIVATE_ORDER")),eq(Collections.emptyList()),eq(r.getMessage())); }
-    @Test void rateLimitFailureDoesNotCallBusinessOrModel() { when(store.acquire(9L)).thenThrow(new BaseException("limit"));assertThrows(BaseException.class,()->service.ask(request("ORDERS")));verifyNoInteractions(model,booking,catalog); }
+    @Test void inFlightRequestPreventsDuplicateConcurrentCall() { when(store.acquire(9L)).thenThrow(new BaseException("busy"));assertThrows(BaseException.class,()->service.ask(request("ORDERS")));verifyNoInteractions(model,booking,catalog); }
+    RentalEquipment listed(Long id,String name) { RentalEquipment e=new RentalEquipment();e.setId(id);e.setName(name);e.setStatus(1);e.setAssetCount(1L);e.setDescription("演示器材说明");return e; }
+    @Test void freeRecommendationUsesStoreCatalogAndReturnsVerifiedNames() {
+        RentalEquipment e=listed(5L,"便携微单 · 旅行套机");when(catalog.equipment(false,1,50,null,null)).thenReturn(new PageResult(1,Collections.singletonList(e)));when(catalog.equipment(5L,false)).thenReturn(e);when(model.configured()).thenReturn(true);when(model.answer(any(),any(),any())).thenReturn("可以先考虑便携微单 · 旅行套机，也可了解不存在的型号。");Request r=request("ASK");r.setAllowModel(true);Turn t=service.ask(r);
+        assertEquals(1,t.getEquipmentLinks().size());assertEquals(5L,t.getEquipmentLinks().get(0).getId());assertEquals(e.getName(),t.getEquipmentLinks().get(0).getName());verify(model).answer(argThat(s->s.contains(e.getName())&&s.contains("不代表指定日期有库存")),any(),eq(r.getMessage()));
+    }
+    @Test void delistedDuringReplyDoesNotBecomeClickable() {
+        RentalEquipment e=listed(5L,"便携微单");when(catalog.equipment(false,1,50,null,null)).thenReturn(new PageResult(1,Collections.singletonList(e)));when(catalog.equipment(5L,false)).thenThrow(new BaseException("停用"));when(model.configured()).thenReturn(true);when(model.answer(any(),any(),any())).thenReturn("便携微单");Request r=request("ASK");r.setAllowModel(true);assertTrue(service.ask(r).getEquipmentLinks().isEmpty());
+    }
+    @Test void missingPhysicalAssetsAndInventedModelsDoNotBecomeClickable() {
+        RentalEquipment e=listed(5L,"便携微单");e.setAssetCount(0L);when(catalog.equipment(false,1,50,null,null)).thenReturn(new PageResult(1,Collections.singletonList(e)));when(model.configured()).thenReturn(true);when(model.answer(any(),any(),any())).thenReturn("便携微单或虚构相机");Request r=request("ASK");r.setAllowModel(true);assertTrue(service.ask(r).getEquipmentLinks().isEmpty());verify(catalog,never()).equipment(5L,false);
+    }
+    @Test void recommendationWithRentalTermsIsNotReducedToCannedRules() {
+        when(model.configured()).thenReturn(true);when(model.answer(any(),any(),any())).thenReturn("请说明拍摄场景");Request r=request("ASK");r.setAllowModel(true);r.setMessage("租期三天，押金预算不高，请推荐器材");assertEquals("MODEL",service.ask(r).getMode());
+    }
+    @Test void duplicateNamesDoNotChooseAnArbitraryEquipmentId() {
+        when(catalog.equipment(false,1,50,null,null)).thenReturn(new PageResult(2,Arrays.asList(listed(5L,"相机"),listed(6L,"相机"))));when(model.configured()).thenReturn(true);when(model.answer(any(),any(),any())).thenReturn("推荐相机");Request r=request("ASK");r.setAllowModel(true);assertTrue(service.ask(r).getEquipmentLinks().isEmpty());
+    }
+    @Test void statusAdvertisesUnlimitedUsage() { Map<String,Object> status=service.status();assertEquals(true,status.get("unlimited"));assertEquals(0,status.get("minuteLimit"));assertEquals(0,status.get("dailyLimit")); }
 }

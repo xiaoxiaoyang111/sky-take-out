@@ -9,6 +9,11 @@ rental:
     api-key: ${RENTAL_ASSISTANT_API_KEY:}
     model: ${RENTAL_ASSISTANT_MODEL:}
     token-field: ${RENTAL_ASSISTANT_TOKEN_FIELD:max_completion_tokens}
+    connect-timeout-ms: ${RENTAL_ASSISTANT_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${RENTAL_ASSISTANT_READ_TIMEOUT_MS:45000}
+    proxy-url: ${RENTAL_ASSISTANT_PROXY_URL:}
+    disable-thinking: ${RENTAL_ASSISTANT_DISABLE_THINKING:false}
+    max-concurrent-requests: ${RENTAL_ASSISTANT_MAX_CONCURRENT_REQUESTS:4}
 
 spring:
   redis:

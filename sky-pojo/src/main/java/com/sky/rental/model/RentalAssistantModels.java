@@ -22,5 +22,10 @@ public final class RentalAssistantModels {
         private String mode;
         private String createdAt;
         private List<String> sources;
+        private List<EquipmentLink> equipmentLinks;
+    }
+    @Data public static class EquipmentLink {
+        private Long id;
+        private String name;
     }
 }
