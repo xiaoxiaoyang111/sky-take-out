@@ -17,7 +17,7 @@
 
 - 新增VALIDATION、PERFORMANCE、PRODUCTION、DEMO、RESUME-INTERVIEW，README与当前项目名统一；其下旧日期条目为历史过程，验收现状以本节和VALIDATION为准。
 - 开发凭据迁入本机忽略的`.rental/application-local.yml`，当前仓库无该数据库密码；环境变量优先。原Git历史按用户要求保留，不把历史密码移除等同于凭据轮换。生产必须用新凭据。
-- 新增生产profile、签名密钥校验、systemd/HTTPS Nginx模板、空库员工兼容表和一次性BCrypt管理员创建。旧外卖MD5员工登录继续兼容。提供GitHub Actions工作流，远程运行状态须另行确认。
+- 新增生产profile、签名密钥校验、systemd/HTTPS Nginx模板、空库员工兼容表和一次性BCrypt管理员创建。旧外卖MD5员工登录继续兼容。GitHub Actions远程CI在工程提交8cdf384通过（run 41567611801），包含干净MySQL/Redis及后端、前端验证。
 - 实际租赁闭环验证与临时数据清理通过。小影真实MODEL回答1873ms；每实例模型并发保护默认4，不恢复每日/分钟次数上限，不执行写业务。
 - 持久化回归发现旧菜品测试硬编码分类11和“酒水饮料”，已改成自行创建/清理分类并断言实际夹具；隔离空库255项测试0失败/0跳过，随后prod管理员初始化成功并自动退出，隔离库已删除。
 - Vue测试使用实际路由工厂。21项日期/推荐链接/SSR检查、7项jsdom组件事件测试通过；后者不是真实浏览器或手机验证。

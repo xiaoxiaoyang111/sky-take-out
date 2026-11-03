@@ -16,7 +16,6 @@
   "limitations": [
     "No cloud server deployment",
     "No current browser recording or phone device validation",
-    "Remote GitHub Actions status not yet checked",
     "No user interview competency verification"
   ],
   "date": "2026-11-03",
@@ -27,5 +26,11 @@
     "mysqlRedis": "real dependencies, owned fresh database removed",
     "javaApiRelease": 8,
     "failures": 0
+  },
+  "githubActions": {
+    "headSha": "8cdf38437ff53bd8a4fc45fb0113dcb5a5adc5b1",
+    "url": "https://github.com/xiaoxiaoyang111/sky-take-out/actions/runs/41567611801",
+    "conclusion": "success",
+    "runId": 41567611801
   }
 }
