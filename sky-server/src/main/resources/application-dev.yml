@@ -1,8 +1,14 @@
+# Local secrets belong in ignored .rental/application-local.yml or process environment.
+spring:
+  config:
+    import:
+      - optional:file:./.rental/application-local.yml
+      - optional:file:../.rental/application-local.yml
 sky:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    host: localhost
-    port: 3306
-    database: sky_take_out
-    username: root
-    password: Root123456!
+    host: ${SKY_DB_HOST:${rental.local.db.host:localhost}}
+    port: ${SKY_DB_PORT:${rental.local.db.port:3306}}
+    database: ${SKY_DB_DATABASE:${rental.local.db.database:sky_take_out}}
+    username: ${SKY_DB_USERNAME:${rental.local.db.username:root}}
+    password: ${SKY_DB_PASSWORD:${rental.local.db.password:}}

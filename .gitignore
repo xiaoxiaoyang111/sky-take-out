@@ -8,3 +8,6 @@
 .env.*
 !.env.example
 *.log
+.rental/
+**/coverage/
+**/test-results/
